@@ -21,6 +21,9 @@
       }
     ]
   },
+  "extensionKind": [
+    "workspace"
+  ],
   "scripts": {
     "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
