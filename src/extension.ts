@@ -1,93 +1,153 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
+import * as child_process from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 
-import axios from "axios";
+const outputChannel = vscode.window.createOutputChannel("ADO Auth");
 
-const startCheck = async () => {
-  console.log(vscode.env);
-  if (vscode.env.remoteName === "wsl") {
-    const statusBarItem = vscode.window.createStatusBarItem(
-      "ado-auth-code",
-      vscode.StatusBarAlignment.Left,
-      100
-    );
-    statusBarItem.command = "ado-auth-code.authenticate";
-    statusBarItem.text = "$(azure-devops) WSL Remote + Windows";
-    statusBarItem.show();
-  } else if (
-    vscode.env.remoteName?.toLocaleLowerCase().includes("codespaces")
-  ) {
-    const statusBarItem = vscode.window.createStatusBarItem(
-      "ado-auth-code",
-      vscode.StatusBarAlignment.Left,
-      100
-    );
-    statusBarItem.command = "ado-auth-code.authenticate";
-    statusBarItem.text = "$(azure-devops) Codespaces";
-    statusBarItem.show();
-  } else {
-    const statusBarItem = vscode.window.createStatusBarItem(
-      "ado-auth-code",
-      vscode.StatusBarAlignment.Left,
-      100
-    );
-    statusBarItem.command = "ado-auth-code.authenticate";
-    statusBarItem.text = "$(azure-devops) Normal";
-    statusBarItem.show();
+interface AdoWorkspace {
+  fsPath: string;
+  gitRemote: string;
+}
+
+const getAdoWorkspaces = async (): Promise<AdoWorkspace[]> => {
+  if (!vscode.workspace.workspaceFolders) {
+    return [];
   }
+  return vscode.workspace.workspaceFolders
+    .map((workspaceFolder) => {
+      const gitRemote = child_process
+        .execSync("git config --get remote.origin.url", {
+          cwd: workspaceFolder.uri.fsPath,
+        })
+        .toString()
+        .trim();
+      return {
+        fsPath: workspaceFolder.uri.fsPath,
+        gitRemote,
+      };
+    })
+    .filter((workspace) => {
+      return (
+        workspace.gitRemote.includes("dev.azure.com") ||
+        workspace.gitRemote.includes("visualstudio.com")
+      );
+    });
 };
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-  console.log(process.env);
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand(
+const approveAccessTokenForGit = async (
+  token: string,
+  adoWorkspaces: AdoWorkspace[]
+) => {
+  adoWorkspaces.forEach((workspace) => {
+    outputChannel.appendLine(
+      "Storing Oauth credentials for " + workspace.gitRemote
+    );
+    child_process.execSync(
+      "git config --global credential.azreposCredentialType oauth"
+    );
+    child_process.execSync(
+      `echo "url=${workspace.gitRemote}\nusername=token\npassword=${token}\n\n" | git credential approve`
+    );
+  });
+};
+
+const storeNpmAuth = async (
+  accessToken: string,
+  adoWorkspaces: AdoWorkspace[]
+) => {
+  const npmRegistries = (
+    await Promise.all(
+      adoWorkspaces.map(async (workspace) => {
+        const npmrcPath = path.join(workspace.fsPath, ".npmrc");
+        try {
+          await fs.promises.access(npmrcPath);
+        } catch (error) {
+          return []; // does not exist/no access
+        }
+        const npmrcContent = await fs.promises.readFile(npmrcPath);
+        const registries = npmrcContent.toString().match(/https.+registry\//g);
+        return registries || [];
+      })
+    )
+  ).flat();
+
+  let homeNpmRcContent = "\n\n";
+  npmRegistries?.forEach((registry) => {
+    const registryPath = registry.split("https://")[1];
+    homeNpmRcContent += `//${registryPath}:_authToken=${accessToken}\n`;
+  });
+
+  outputChannel.appendLine("Found registries: " + npmRegistries.toString());
+  await fs.promises.appendFile(
+    path.join(os.homedir(), ".npmrc"),
+    homeNpmRcContent
+  );
+};
+
+const getAccessToken = async () => {
+  let session = await vscode.authentication.getSession(
+    "microsoft",
+    ["499b84ac-1321-427f-aa17-267ca6975798/.default"],
+    { silent: true }
+  );
+  if (!session) {
+    session = await vscode.authentication.getSession(
+      "microsoft",
+      ["499b84ac-1321-427f-aa17-267ca6975798/.default"],
+      { createIfNone: true }
+    );
+  }
+  if (session.accessToken) {
+    outputChannel.appendLine(
+      "Got access token: " + session.accessToken.slice(-7)
+    );
+  }
+  return session.accessToken;
+};
+
+const authenticateAdo = async () => {
+  const adoWorkspaces = await getAdoWorkspaces();
+  if (adoWorkspaces.length === 0) {
+    outputChannel.appendLine("No workspace folder found");
+    return;
+  }
+  const accessToken = await getAccessToken();
+  await approveAccessTokenForGit(accessToken, adoWorkspaces);
+  await storeNpmAuth(accessToken, adoWorkspaces);
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100
+  );
+  statusBarItem.text = "$(azure-devops) Authenticated!";
+  statusBarItem.show();
+};
+
+export async function activate(context: vscode.ExtensionContext) {
+  const disposable = vscode.commands.registerCommand(
     "ado-auth-code.authenticate",
     async () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      const value = await vscode.window.showInformationMessage(
-        "You need to sign in to ADO",
-        { modal: true },
-        "Sign in"
-      );
-      if (value === "Sign in") {
-        const session = await vscode.authentication.getSession(
-          "microsoft",
-          ["499b84ac-1321-427f-aa17-267ca6975798/.default"],
-          { createIfNone: true }
-        );
-        try {
-          const response = await axios.post(
-            "https://vssps.dev.azure.com/testorg/_apis/tokens/pats?api-version=7.0-preview.1",
-            {
-              displayName: "new_token",
-              scope: "vso.code",
-              validTo: "2023-02-04T23:46:23.319Z",
-              allOrgs: false,
-            },
-            {
-              headers: {
-                Authorization: "Bearer " + session.accessToken,
-              },
-            }
-          );
-          console.log(response);
-        } catch (err) {
-          console.error(err);
-        }
+      outputChannel.appendLine("Command called");
+      await authenticateAdo();
+    }
+  );
+
+  const authDisposable = vscode.authentication.onDidChangeSessions(
+    async (change) => {
+      if (change.provider.id === "microsoft") {
+        outputChannel.appendLine("Auth changed");
+        await authenticateAdo();
       }
     }
   );
 
-  startCheck();
+  await authenticateAdo();
 
   context.subscriptions.push(disposable);
+  context.subscriptions.push(authDisposable);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  outputChannel.dispose();
+}
