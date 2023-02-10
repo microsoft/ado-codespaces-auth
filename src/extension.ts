@@ -73,8 +73,13 @@ const storeNpmAuth = async (
     )
   ).flat();
 
-  let homeNpmRcContent = "\n\n";
+  const userNpmRcPath = path.join(os.homedir(), ".npmrc");
+  let homeNpmRcContent = fs.promises.readFile(userNpmRcPath).toString();
   npmRegistries?.forEach((registry) => {
+    homeNpmRcContent = homeNpmRcContent
+      .split("\n")
+      .filter((line) => !line.startsWith(`//${registryPath}`))
+      .join("\n");
     const registryPath = registry.split("https://")[1];
     homeNpmRcContent += `//${registryPath}:_authToken=${accessToken}\n`;
   });
