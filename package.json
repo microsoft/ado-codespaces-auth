@@ -1,6 +1,6 @@
 {
-  "name": "ado-codespaces-auth",
-  "displayName": "ado-codespaces-auth",
+  "name": "ado-codespaces-auth-test",
+  "displayName": "ado-codespaces-auth-test",
   "description": "",
   "version": "0.0.1",
   "engines": {
