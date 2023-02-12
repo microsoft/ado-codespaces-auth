@@ -102,6 +102,7 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
     showStatusBarIcon(true);
 
     const authScript = vscode.workspace.getConfiguration("postAuthScript");
+    log("authScript config", authScript);
   } catch (err) {
     log("Error", err || "");
     showStatusBarIcon(false);
