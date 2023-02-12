@@ -3,93 +3,33 @@ import * as child_process from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import * as http from "http";
+import { TOKEN_LISTENER_PORT } from "./constants";
 
 const outputChannel = vscode.window.createOutputChannel("ADO Auth");
 
-interface AdoWorkspace {
-  fsPath: string;
-  gitRemote: string;
-}
-
-const getAdoWorkspaces = async (): Promise<AdoWorkspace[]> => {
-  if (!vscode.workspace.workspaceFolders) {
-    return [];
-  }
-  return vscode.workspace.workspaceFolders
-    .map((workspaceFolder) => {
-      const gitRemote = child_process
-        .execSync("git config --get remote.origin.url", {
-          cwd: workspaceFolder.uri.fsPath,
-        })
-        .toString()
-        .trim();
-      return {
-        fsPath: workspaceFolder.uri.fsPath,
-        gitRemote,
-      };
-    })
-    .filter((workspace) => {
-      return (
-        workspace.gitRemote.includes("dev.azure.com") ||
-        workspace.gitRemote.includes("visualstudio.com")
-      );
-    });
+const log = (...args: { toString: () => string }[]) => {
+  outputChannel.appendLine(new Date().toISOString() + ": " + args.join(" "));
 };
 
-const approveAccessTokenForGit = async (
-  token: string,
-  adoWorkspaces: AdoWorkspace[]
-) => {
-  adoWorkspaces.forEach((workspace) => {
-    outputChannel.appendLine(
-      "Storing Oauth credentials for " + workspace.gitRemote
-    );
-    child_process.execSync(
-      "git config --global credential.azreposCredentialType oauth"
-    );
-    child_process.execSync(
-      `echo "url=${workspace.gitRemote}\nusername=token\npassword=${token}\n\n" | git credential approve`
-    );
-  });
-};
-
-const storeNpmAuth = async (
-  accessToken: string,
-  adoWorkspaces: AdoWorkspace[]
-) => {
-  const npmRegistries = (
-    await Promise.all(
-      adoWorkspaces.map(async (workspace) => {
-        const npmrcPath = path.join(workspace.fsPath, ".npmrc");
-        try {
-          await fs.promises.access(npmrcPath);
-        } catch (error) {
-          return []; // does not exist/no access
-        }
-        const npmrcContent = await fs.promises.readFile(npmrcPath);
-        const registries = npmrcContent.toString().match(/https.+registry\//g);
-        return registries || [];
+const server = http
+  .createServer(async (_, res) => {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    res.writeHead(200, { "Content-Type": "application/json" });
+    log("Got request for token");
+    res.write(
+      JSON.stringify({
+        accessToken: await getAccessToken(),
       })
-    )
-  ).flat();
+    );
+    res.end();
+  })
+  .listen(TOKEN_LISTENER_PORT, "localhost");
 
-  const userNpmRcPath = path.join(os.homedir(), ".npmrc");
-  let homeNpmRcContent = fs.promises.readFile(userNpmRcPath).toString();
-  npmRegistries?.forEach((registry) => {
-    homeNpmRcContent = homeNpmRcContent
-      .split("\n")
-      .filter((line) => !line.startsWith(`//${registryPath}`))
-      .join("\n");
-    const registryPath = registry.split("https://")[1];
-    homeNpmRcContent += `//${registryPath}:_authToken=${accessToken}\n`;
-  });
-
-  outputChannel.appendLine("Found registries: " + npmRegistries.toString());
-  await fs.promises.appendFile(
-    path.join(os.homedir(), ".npmrc"),
-    homeNpmRcContent
-  );
-};
+const statusBarItem = vscode.window.createStatusBarItem(
+  vscode.StatusBarAlignment.Left,
+  100
+);
 
 const getAccessToken = async () => {
   let session = await vscode.authentication.getSession(
@@ -105,36 +45,75 @@ const getAccessToken = async () => {
     );
   }
   if (session.accessToken) {
-    outputChannel.appendLine(
-      "Got access token: " + session.accessToken.slice(-7)
-    );
+    log("Got access token from VSCode");
   }
   return session.accessToken;
 };
 
-const authenticateAdo = async () => {
-  const adoWorkspaces = await getAdoWorkspaces();
-  if (adoWorkspaces.length === 0) {
-    outputChannel.appendLine("No workspace folder found");
-    return;
+const showStatusBarIcon = (authenticated: boolean) => {
+  statusBarItem.text = "$(azure-devops) Authenticated";
+  statusBarItem.command = "ado-auth-code.authenticate";
+  if (!authenticated) {
+    statusBarItem.color = "statusBarItem.errorForeground";
+    statusBarItem.text = "$(azure-devops) Click to authenticate";
   }
-  const accessToken = await getAccessToken();
-  await approveAccessTokenForGit(accessToken, adoWorkspaces);
-  await storeNpmAuth(accessToken, adoWorkspaces);
-  const statusBarItem = vscode.window.createStatusBarItem(
-    vscode.StatusBarAlignment.Left,
-    100
-  );
-  statusBarItem.text = "$(azure-devops) Authenticated!";
   statusBarItem.show();
+};
+
+const authenticateAdo = async (context: vscode.ExtensionContext) => {
+  try {
+    await getAccessToken();
+
+    const authHelperExecutablePath = path.join(os.homedir(), "ado-auth-helper");
+
+    const authHelperJsPath = path.join(
+      context.extensionPath,
+      "out",
+      "ado-auth-helper.js"
+    );
+
+    fs.writeFileSync(
+      authHelperExecutablePath,
+      `#!${process.execPath}\n\nrequire("${authHelperJsPath}")\n`
+    );
+    fs.chmodSync(authHelperExecutablePath, 0o755);
+
+    child_process.execSync(
+      `git config --global credential.helper '${authHelperExecutablePath}'`
+    );
+
+    log(
+      "Executed",
+      `git config --global credential.helper '${authHelperExecutablePath}'`
+    );
+
+    try {
+      child_process.execSync(
+        `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/ado-auth-helper`
+      );
+      log(
+        "Executed",
+        `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/ado-auth-helper`
+      );
+    } catch (err) {
+      log("Could not create symlink in /usr/local/bin");
+    }
+
+    showStatusBarIcon(true);
+
+    const authScript = vscode.workspace.getConfiguration("postAuthScript");
+  } catch (err) {
+    log("Error", err || "");
+    showStatusBarIcon(false);
+  }
 };
 
 export async function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     "ado-auth-code.authenticate",
     async () => {
-      outputChannel.appendLine("Command called");
-      await authenticateAdo();
+      outputChannel.appendLine("ado-auth-code.authenticate called");
+      await authenticateAdo(context);
     }
   );
 
@@ -142,12 +121,12 @@ export async function activate(context: vscode.ExtensionContext) {
     async (change) => {
       if (change.provider.id === "microsoft") {
         outputChannel.appendLine("Auth changed");
-        await authenticateAdo();
+        await authenticateAdo(context);
       }
     }
   );
 
-  await authenticateAdo();
+  await authenticateAdo(context);
 
   context.subscriptions.push(disposable);
   context.subscriptions.push(authDisposable);
@@ -155,4 +134,5 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   outputChannel.dispose();
+  server.close();
 }

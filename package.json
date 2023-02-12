@@ -2,7 +2,8 @@
   "name": "ado-codespaces-auth-test",
   "displayName": "ado-codespaces-auth-test",
   "description": "",
-  "version": "0.0.1",
+  "publisher": "RJEx",
+  "version": "0.0.15",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -12,21 +13,31 @@
   "activationEvents": [
     "*"
   ],
-  "main": "./out/main.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "ado-codespaces-auth.authenticate",
         "title": "Authenticate ADO to Codespace"
       }
-    ]
+    ],
+    "configuration": {
+      "postAuthScript": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": null,
+        "description": "Script to Execute when auth token is fetched and/or updated"
+      }
+    }
   },
   "extensionKind": [
     "workspace"
   ],
   "scripts": {
-    "vscode:prepublish": "yarn run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "vscode:prepublish": "yarn run esbuild-base",
+    "esbuild-base": "esbuild ./src/extension.ts ./src/ado-auth-helper.ts --bundle --outdir=out --external:vscode --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "lint": "eslint src --ext ts"
