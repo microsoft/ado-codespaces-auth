@@ -54,7 +54,9 @@ const showStatusBarIcon = (authenticated: boolean) => {
   statusBarItem.text = "$(azure-devops) Authenticated";
   statusBarItem.command = "ado-auth-code.authenticate";
   if (!authenticated) {
-    statusBarItem.color = "statusBarItem.errorForeground";
+    statusBarItem.color = new vscode.ThemeColor(
+      "statusBarItem.errorForeground"
+    );
     statusBarItem.text = "$(azure-devops) Click to authenticate";
   }
   statusBarItem.show();
@@ -101,8 +103,8 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
 
     showStatusBarIcon(true);
 
-    const authScript = vscode.workspace.getConfiguration("postAuthScript");
-    log("authScript config", authScript);
+    const authScript = vscode.workspace.getConfiguration("ado-auth-helper");
+    log("authScript config", JSON.stringify(authScript));
   } catch (err) {
     log("Error", err || "");
     showStatusBarIcon(false);

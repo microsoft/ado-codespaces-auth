@@ -3,7 +3,7 @@
   "displayName": "ado-codespaces-auth-test",
   "description": "",
   "publisher": "RJEx",
-  "version": "0.0.15",
+  "version": "0.0.17",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -22,13 +22,17 @@
       }
     ],
     "configuration": {
-      "postAuthScript": {
-        "type": [
-          "string",
-          "null"
-        ],
-        "default": null,
-        "description": "Script to Execute when auth token is fetched and/or updated"
+      "type": "object",
+      "title": "ADO Codespaces Auth",
+      "properties": {
+        "ado-auth-helper.postAuthScript": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Script to Execute when auth token is fetched and/or updated"
+        }
       }
     }
   },
