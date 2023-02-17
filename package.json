@@ -3,7 +3,7 @@
   "displayName": "ado-codespaces-auth-test",
   "description": "",
   "publisher": "RJEx",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "engines": {
     "vscode": "^1.74.0"
   },

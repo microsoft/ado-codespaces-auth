@@ -54,8 +54,8 @@ const showStatusBarIcon = (authenticated: boolean) => {
   statusBarItem.text = "$(azure-devops) Authenticated";
   statusBarItem.command = "ado-auth-code.authenticate";
   if (!authenticated) {
-    statusBarItem.color = new vscode.ThemeColor(
-      "statusBarItem.errorForeground"
+    statusBarItem.backgroundColor = new vscode.ThemeColor(
+      "statusBarItem.errorBackground"
     );
     statusBarItem.text = "$(azure-devops) Click to authenticate";
   }
