@@ -8,6 +8,8 @@ import { IPC } from "node-ipc";
 
 const outputChannel = vscode.window.createOutputChannel("ADO Auth");
 
+const authVsCodeCommand = "ado-codespaces-auth.authenticate";
+
 const log = (...args: { toString: () => string }[]) => {
   outputChannel.appendLine(new Date().toISOString() + ": " + args.join(" "));
 };
@@ -68,7 +70,7 @@ const getAccessToken = async () => {
 
 const showStatusBarIcon = (authenticated: boolean) => {
   statusBarItem.text = "$(azure-devops) Authenticated";
-  statusBarItem.command = "ado-auth-code.authenticate";
+  statusBarItem.command = authVsCodeCommand;
   statusBarItem.backgroundColor = undefined;
   if (!authenticated) {
     statusBarItem.backgroundColor = new vscode.ThemeColor(
@@ -132,9 +134,9 @@ export async function activate(context: vscode.ExtensionContext) {
   await startServer();
 
   const disposable = vscode.commands.registerCommand(
-    "ado-auth-code.authenticate",
+    authVsCodeCommand,
     async () => {
-      outputChannel.appendLine("ado-auth-code.authenticate called");
+      outputChannel.appendLine(authVsCodeCommand, "called");
       await authenticateAdo(context);
     }
   );

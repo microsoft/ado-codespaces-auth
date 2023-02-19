@@ -20,21 +20,7 @@
         "command": "ado-codespaces-auth.authenticate",
         "title": "Authenticate ADO to Codespace"
       }
-    ],
-    "configuration": {
-      "type": "object",
-      "title": "ADO Codespaces Auth",
-      "properties": {
-        "ado-auth-helper.postAuthScript": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "Script to Execute when auth token is fetched and/or updated"
-        }
-      }
-    }
+    ]
   },
   "extensionKind": [
     "workspace"
