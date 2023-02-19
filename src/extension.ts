@@ -80,15 +80,6 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
     );
     fs.chmodSync(authHelperExecutablePath, 0o755);
 
-    child_process.execSync(
-      `git config --global credential.helper '${authHelperExecutablePath}'`
-    );
-
-    log(
-      "Executed",
-      `git config --global credential.helper '${authHelperExecutablePath}'`
-    );
-
     try {
       child_process.execSync(
         `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/ado-auth-helper`
