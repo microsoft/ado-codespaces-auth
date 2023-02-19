@@ -1,66 +1,85 @@
-import axios from "axios";
+import { IPC } from "node-ipc";
 import * as readline from "readline";
-import { TOKEN_LISTENER_PORT } from "./constants";
+import * as child_process from "child_process";
+
+const getAccessTokenFromSocket = (socketPath: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const ipc = new IPC();
+
+    ipc.config.silent = true;
+
+    const timeout = setTimeout(() => {
+      ipc.disconnect("extension");
+      reject();
+    }, 60 * 1000);
+
+    function connecting() {
+      ipc.of.extension.on("error", (err) => {
+        reject(err);
+      });
+      ipc.of.extension.on("connect", () => {
+        ipc.of.extension.emit("getAccessToken");
+      });
+      ipc.of.extension.on("accessToken", (data) => {
+        ipc.disconnect("extension");
+        clearTimeout(timeout);
+        resolve(data);
+      });
+    }
+
+    ipc.connectTo("extension", socketPath, connecting);
+  });
+};
 
 const getAccessToken = async (): Promise<string> => {
-  try {
-    const response = await axios.get(
-      `http://localhost:${TOKEN_LISTENER_PORT}/`
-    );
-    return response.data.accessToken;
-  } catch (err) {
+  // ss- lx gets list of listening unix sockets
+  const data = child_process.execSync("ss -lx").toString();
+  // Find all sockets which start with /tmp/ado-auth
+  // Our extension will listen on sockets on /tmp/ado-auth-<uuid>.sock path
+  const openSockets = data.match(/\/tmp\/ado-auth\S*/g);
+  if (!openSockets) {
+    // No open listening sockets with /tmp/ado-auth - meaning no vscode connected
+    // Exit with exit-code 1
     process.exit(1);
   }
+  // Return as soon as any sockets gets us an access token
+  return Promise.any(
+    openSockets.map((socket) => getAccessTokenFromSocket(socket))
+  );
 };
 
-const delay = async (delayMs: number) => {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
-};
-
-const retry = <T>(
-  fn: () => Promise<T>,
-  retry = 3,
-  delayMs = 10000
-): (() => Promise<T>) => {
-  return async (...args) => {
-    while (true) {
-      try {
-        return await fn(...args);
-      } catch (err) {
-        retry = retry - 1;
-        if (retry === 0) {
-          throw err;
-        }
-        await delay(delayMs);
-      }
-    }
-  };
+const isGitAskingForAdoRepo = async (): Promise<boolean> => {
+  let input = "";
+  const rl = readline.createInterface({
+    input: process.stdin,
+  });
+  for await (const line of rl) {
+    input += line + "\n";
+  }
+  return input.includes("dev.azure.com") || input.includes(".visualstudio.com");
 };
 
 const run = async () => {
-  if (process.argv[2] !== "get" && process.argv[2] !== "get-access-token") {
+  const command = process.argv[2];
+  // get - is for git credential helper, it will output in a format git understands
+  // get-access-token will just print the access token - for other tools which want to integrate this
+  if (command !== "get" && command !== "get-access-token") {
     return;
   }
-  let input = "";
-  // Take stdin input for git credential helper
-  if (process.argv[2] === "get") {
-    const rl = readline.createInterface({
-      input: process.stdin,
-    });
-    for await (const line of rl) {
-      input += line + "\n";
-    }
-  }
-  const token = await retry(getAccessToken)();
-  if (
-    process.argv[2] === "get" &&
-    (input.includes("dev.azure.com") || input.includes(".visualstudio.com"))
-  ) {
+
+  const isForGitAdoRepo = command === "get" && (await isGitAskingForAdoRepo());
+
+  if (isForGitAdoRepo) {
+    const token = await getAccessToken();
     process.stdout.write("username=token\n");
     process.stdout.write("password=" + token + "\n");
-  } else if (process.argv[2] === "get-access-token") {
+  } else if (command === "get-access-token") {
+    const token = await getAccessToken();
     process.stdout.write(token + "\n");
   }
+
+  // Need explicit exit as some of the socket io may still be happening
+  process.exit(0);
 };
 
 run();

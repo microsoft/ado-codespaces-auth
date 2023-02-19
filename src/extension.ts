@@ -3,28 +3,46 @@ import * as child_process from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import * as http from "http";
-import { TOKEN_LISTENER_PORT } from "./constants";
+import { v4 as uuidV4 } from "uuid";
+import { IPC } from "node-ipc";
 
 const outputChannel = vscode.window.createOutputChannel("ADO Auth");
+
+const authVsCodeCommand = "ado-codespaces-auth.authenticate";
 
 const log = (...args: { toString: () => string }[]) => {
   outputChannel.appendLine(new Date().toISOString() + ": " + args.join(" "));
 };
 
-const server = http
-  .createServer(async (_, res) => {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    res.writeHead(200, { "Content-Type": "application/json" });
-    log("Got request for token");
-    res.write(
-      JSON.stringify({
-        accessToken: await getAccessToken(),
-      })
-    );
-    res.end();
-  })
-  .listen(TOKEN_LISTENER_PORT, "localhost");
+const ipc = new IPC();
+ipc.config.silent = true;
+
+const startServer = (): Promise<void> => {
+  return new Promise<void>((resolve, reject) => {
+    const socketPath = `/tmp/ado-auth-${uuidV4()}.sock`;
+
+    log("Using socketPath", socketPath);
+
+    ipc.config.silent = true;
+
+    ipc.serve(socketPath, () => {
+      ipc.server.on("getAccessToken", async (_, socket) => {
+        log("Got request for token");
+        ipc.server.emit(socket, "accessToken", await getAccessToken());
+      });
+    });
+
+    ipc.server.on("start", () => {
+      resolve();
+    });
+
+    ipc.server.on("error", (err) => {
+      reject(err);
+    });
+
+    ipc.server.start();
+  });
+};
 
 const statusBarItem = vscode.window.createStatusBarItem(
   vscode.StatusBarAlignment.Left,
@@ -52,7 +70,8 @@ const getAccessToken = async () => {
 
 const showStatusBarIcon = (authenticated: boolean) => {
   statusBarItem.text = "$(azure-devops) Authenticated";
-  statusBarItem.command = "ado-auth-code.authenticate";
+  statusBarItem.command = authVsCodeCommand;
+  statusBarItem.backgroundColor = undefined;
   if (!authenticated) {
     statusBarItem.backgroundColor = new vscode.ThemeColor(
       "statusBarItem.errorBackground"
@@ -103,10 +122,12 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
+  await startServer();
+
   const disposable = vscode.commands.registerCommand(
-    "ado-auth-code.authenticate",
+    authVsCodeCommand,
     async () => {
-      outputChannel.appendLine("ado-auth-code.authenticate called");
+      outputChannel.appendLine(authVsCodeCommand, "called");
       await authenticateAdo(context);
     }
   );
@@ -128,5 +149,5 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   outputChannel.dispose();
-  server.close();
+  ipc.server.stop();
 }
