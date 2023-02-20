@@ -3,6 +3,7 @@
   "displayName": "Azure Devops Codespaces Authentication",
   "description": "This extension is used for authenticating to Azure Devops in GitHub Codespaces",
   "publisher": "ms-codespaces-tools",
+  "repository": "https://github.com/microsoft/ado-codespaces-auth",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
