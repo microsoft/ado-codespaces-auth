@@ -1,6 +1,6 @@
-# Project
+# Azure Devops Codespaces Authentication
 
-- This extension is used for authenticating to Azure Devops in GitHub Codespaces.
+- This VSCode extension is used for authenticating to Azure Devops in GitHub Codespaces.
 - It authenticates using in-built microsoft auth provider to authenticate to ADO using AAD login.
 - User is prompted for login on opening the codespace with this extension installed.
 - The Oauth access token is then shared with the codespace.
