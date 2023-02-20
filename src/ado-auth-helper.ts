@@ -10,11 +10,12 @@ const getAccessTokenFromSocket = (socketPath: string): Promise<string> => {
 
     const timeout = setTimeout(() => {
       ipc.disconnect("extension");
-      reject();
+      reject(new Error("timed-out waiting for auth"));
     }, 60 * 1000);
 
     function connecting() {
       ipc.of.extension.on("error", (err) => {
+        ipc.disconnect("extension");
         reject(err);
       });
       ipc.of.extension.on("connect", () => {
