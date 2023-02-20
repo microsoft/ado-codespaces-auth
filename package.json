@@ -3,11 +3,15 @@
   "displayName": "Azure Devops Codespaces Authentication",
   "description": "Seamless authentication to Azure Devops in GitHub Codespaces",
   "publisher": "ms-codespaces-tools",
-  "repository": "https://github.com/microsoft/ado-codespaces-auth",
-  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/ado-codespaces-auth"
+  },
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.74.0"
   },
+  "icon": "images/ado-logo.png",
   "categories": [
     "Other"
   ],
