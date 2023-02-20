@@ -6,7 +6,7 @@ import * as os from "os";
 import { v4 as uuidV4 } from "uuid";
 import { IPC } from "node-ipc";
 
-const outputChannel = vscode.window.createOutputChannel("ADO Auth");
+const outputChannel = vscode.window.createOutputChannel("ADO Codespaces Auth");
 
 const authVsCodeCommand = "ado-codespaces-auth.authenticate";
 
@@ -21,9 +21,7 @@ const startServer = (): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     const socketPath = `/tmp/ado-auth-${uuidV4()}.sock`;
 
-    log("Using socketPath", socketPath);
-
-    ipc.config.silent = true;
+    log("Using socketPath", socketPath, "for auth token server");
 
     ipc.serve(socketPath, () => {
       ipc.server.on("getAccessToken", async (_, socket) => {
@@ -112,9 +110,6 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
     }
 
     showStatusBarIcon(true);
-
-    const authScript = vscode.workspace.getConfiguration("ado-auth-helper");
-    log("authScript config", JSON.stringify(authScript));
   } catch (err) {
     log("Error", err || "");
     showStatusBarIcon(false);
@@ -127,7 +122,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     authVsCodeCommand,
     async () => {
-      outputChannel.appendLine(authVsCodeCommand, "called");
+      log(authVsCodeCommand, "called");
       await authenticateAdo(context);
     }
   );
@@ -135,7 +130,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const authDisposable = vscode.authentication.onDidChangeSessions(
     async (change) => {
       if (change.provider.id === "microsoft") {
-        outputChannel.appendLine("Auth changed");
+        log("Auth changed");
         await authenticateAdo(context);
       }
     }
