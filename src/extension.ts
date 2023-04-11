@@ -24,9 +24,13 @@ const startServer = (): Promise<void> => {
     log("Using socketPath", socketPath, "for auth token server");
 
     ipc.serve(socketPath, () => {
-      ipc.server.on("getAccessToken", async (_, socket) => {
-        log("Got request for token");
-        ipc.server.emit(socket, "accessToken", await getAccessToken());
+      ipc.server.on("getAccessToken", async ({ scopes }, socket) => {
+        log("Got request for token with scopes:", scopes);
+        ipc.server.emit(
+          socket,
+          "accessToken",
+          await getAccessToken(scopes?.split(" "))
+        );
       });
     });
 
@@ -47,18 +51,16 @@ const statusBarItem = vscode.window.createStatusBarItem(
   100
 );
 
-const getAccessToken = async () => {
-  let session = await vscode.authentication.getSession(
-    "microsoft",
-    ["499b84ac-1321-427f-aa17-267ca6975798/.default"],
-    { silent: true }
-  );
+const getAccessToken = async (
+  scopes = ["499b84ac-1321-427f-aa17-267ca6975798/.default"]
+) => {
+  let session = await vscode.authentication.getSession("microsoft", scopes, {
+    silent: true,
+  });
   if (!session) {
-    session = await vscode.authentication.getSession(
-      "microsoft",
-      ["499b84ac-1321-427f-aa17-267ca6975798/.default"],
-      { createIfNone: true }
-    );
+    session = await vscode.authentication.getSession("microsoft", scopes, {
+      createIfNone: true,
+    });
   }
   if (session.accessToken) {
     log("Got access token from VSCode");

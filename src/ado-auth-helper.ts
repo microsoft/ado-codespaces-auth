@@ -19,7 +19,7 @@ const getAccessTokenFromSocket = (socketPath: string): Promise<string> => {
         reject(err);
       });
       ipc.of.extension.on("connect", () => {
-        ipc.of.extension.emit("getAccessToken");
+        ipc.of.extension.emit("getAccessToken", { scopes: process.argv[3] });
       });
       ipc.of.extension.on("accessToken", (data) => {
         ipc.disconnect("extension");
