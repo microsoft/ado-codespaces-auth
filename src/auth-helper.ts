@@ -19,7 +19,12 @@ const getAccessTokenFromSocket = (socketPath: string): Promise<string> => {
         reject(err);
       });
       ipc.of.extension.on("connect", () => {
-        ipc.of.extension.emit("getAccessToken", { scopes: process.argv[3] });
+        ipc.of.extension.emit("getAccessToken", {
+          // Only azure-auth-helper supports scopes
+          scopes: process.argv[1].includes("azure-auth-helper")
+            ? process.argv[3]
+            : undefined,
+        });
       });
       ipc.of.extension.on("accessToken", (data) => {
         ipc.disconnect("extension");
