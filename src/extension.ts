@@ -81,35 +81,39 @@ const showStatusBarIcon = (authenticated: boolean) => {
   statusBarItem.show();
 };
 
+const createHelperExecutable = (
+  context: vscode.ExtensionContext,
+  executableName: string
+) => {
+  const authHelperExecutablePath = path.join(os.homedir(), executableName);
+
+  const authHelperJsPath = path.join(
+    context.extensionPath,
+    "out",
+    "auth-helper.js"
+  );
+
+  fs.writeFileSync(
+    authHelperExecutablePath,
+    `#!${process.execPath}\n\nrequire("${authHelperJsPath}")\n`
+  );
+  fs.chmodSync(authHelperExecutablePath, 0o755);
+
+  try {
+    const command = `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/${executableName}`;
+    log("Executing", command);
+    child_process.execSync(command);
+  } catch (err) {
+    log("Could not create symlink in /usr/local/bin");
+  }
+};
+
 const authenticateAdo = async (context: vscode.ExtensionContext) => {
   try {
     await getAccessToken();
 
-    const authHelperExecutablePath = path.join(os.homedir(), "ado-auth-helper");
-
-    const authHelperJsPath = path.join(
-      context.extensionPath,
-      "out",
-      "ado-auth-helper.js"
-    );
-
-    fs.writeFileSync(
-      authHelperExecutablePath,
-      `#!${process.execPath}\n\nrequire("${authHelperJsPath}")\n`
-    );
-    fs.chmodSync(authHelperExecutablePath, 0o755);
-
-    try {
-      child_process.execSync(
-        `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/ado-auth-helper`
-      );
-      log(
-        "Executed",
-        `sudo -n ln -sf ${authHelperExecutablePath} /usr/local/bin/ado-auth-helper`
-      );
-    } catch (err) {
-      log("Could not create symlink in /usr/local/bin");
-    }
+    createHelperExecutable(context, "ado-auth-helper");
+    createHelperExecutable(context, "azure-auth-helper");
 
     showStatusBarIcon(true);
   } catch (err) {
