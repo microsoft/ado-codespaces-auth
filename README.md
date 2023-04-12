@@ -8,6 +8,13 @@
   - `get-access-token` - This command will print an access token to stdout. Other tools can integrate this for getting ADO credentials, for eg, authenticating to ADO Artifact Feeds (NPM, Nuget). 
 - This extension is not recommended to be installed by itself. You should instead use the [external-repository](https://github.com/microsoft/codespace-features/tree/main/src/external-repository) and [artifacts-helper](https://github.com/microsoft/codespace-features/tree/main/src/artifacts-helper) devcontainer features which will ensure this extension is preinstalled on your Codespace with proper configuration.
 
+### New in version 1.1
+- Credential helper for managed identities, installed at `~/azure-auth-helper`.
+- This one allows specifying custom scopes for the access token, like so:
+```bash
+$ ~/azure-auth-helper get-access-token "https://management.azure.com/.default"
+```
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
