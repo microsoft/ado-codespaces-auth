@@ -2,6 +2,9 @@
 
 All notable changes to the "ado-codespaces-code" extension will be documented in this file.
 
+## [1.1.1] - 2023-09-12
+- Add warning for non Codespace environments
+
 ## [1.1.0] - 2023-04-12
 - Credential helper for managed identities, installed at `~/azure-auth-helper`.
 - This one allows specifying custom scopes for the access token, like so:

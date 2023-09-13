@@ -123,6 +123,21 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
+
+  if (vscode.env.remoteName !== "codespaces") {
+    vscode.window.showWarningMessage("ADO Codespaces Auth extension is only supported in Github Codespaces", "Uninstall")
+      .then(async (data) => {
+        if (data === "Uninstall") {
+          try {
+            await vscode.commands.executeCommand("workbench.extensions.uninstallExtension", "ms-codespaces-tools.ado-codespaces-auth")
+          } catch (err) {
+            log(err || "");
+          }
+        }
+      });
+    return;
+  }
+
   await startServer();
 
   const disposable = vscode.commands.registerCommand(
