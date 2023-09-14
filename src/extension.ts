@@ -122,19 +122,38 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
   }
 };
 
-export async function activate(context: vscode.ExtensionContext) {
-
-  if (vscode.env.remoteName !== "codespaces") {
-    vscode.window.showWarningMessage("ADO Codespaces Auth extension is only supported in Github Codespaces", "Uninstall")
-      .then(async (data) => {
-        if (data === "Uninstall") {
-          try {
-            await vscode.commands.executeCommand("workbench.extensions.uninstallExtension", "ms-codespaces-tools.ado-codespaces-auth")
-          } catch (err) {
-            log(err || "");
-          }
+const checkAndWarnIfEnvUnsupported = (): boolean => {
+  const supportedRemotes = [
+    "codespaces",
+    "dev-container",
+    "attached-container",
+  ];
+  if (supportedRemotes.includes(vscode.env.remoteName || "")) {
+    return true;
+  }
+  vscode.window
+    .showWarningMessage(
+      "ADO Codespaces Auth extension is only supported in Github Codespaces",
+      "Uninstall"
+    )
+    .then(async (data) => {
+      if (data === "Uninstall") {
+        try {
+          await vscode.commands.executeCommand(
+            "workbench.extensions.uninstallExtension",
+            "ms-codespaces-tools.ado-codespaces-auth"
+          );
+        } catch (err) {
+          log(err || "");
         }
-      });
+      }
+    });
+  return false;
+};
+
+export async function activate(context: vscode.ExtensionContext) {
+  if (!checkAndWarnIfEnvUnsupported()) {
+    log("Unsupported env, not enabling extension");
     return;
   }
 
