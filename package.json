@@ -35,9 +35,9 @@
     "esbuild-base": "esbuild ./src/extension.ts ./src/auth-helper.ts --bundle --outdir=out --external:vscode --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "lint": "eslint src --ext ts",
+    "lint": "tsc && eslint src --ext ts",
     "vsce:package": "vsce package --allow-star-activation",
-    "vsce:publish": "vsce publish"
+    "vsce:publish": "vsce publish --allow-star-activation"
   },
   "dependencies": {
     "node-ipc": "^9.0.0",

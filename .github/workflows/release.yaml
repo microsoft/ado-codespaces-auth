@@ -1,0 +1,32 @@
+name: Release
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: yarn install
+      - run: yarn lint
+      - run: yarn vsce:package
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ado-codespaces-tools-vsix
+          path: ./**.vsix
+
+      - run: yarn vsce:publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
