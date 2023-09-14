@@ -14,6 +14,7 @@
 ```bash
 $ ~/azure-auth-helper get-access-token "https://management.azure.com/.default"
 ```
+test
 
 ## Contributing
 
