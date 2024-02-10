@@ -25,7 +25,18 @@
         "command": "ado-codespaces-auth.authenticate",
         "title": "Authenticate Azure DevOps"
       }
-    ]
+    ],
+    "configuration":{
+      "type": "object",
+      "title": "Azure DevOps Codespaces Authentication",
+      "properties": {
+        "adoCodespacesAuth.tenantID": {
+          "type": "string",
+          "default": "",
+          "description": "A specific tenant to sign in to. The default is to sign in to the common tenant. Valid values are common, organizations, consumers, and tenant identifiers."
+        }
+      }
+    }
   },
   "extensionKind": [
     "workspace"
