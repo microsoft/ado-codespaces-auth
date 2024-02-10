@@ -113,8 +113,8 @@ const authenticateAdo = async (context: vscode.ExtensionContext) => {
     var scopes = ["499b84ac-1321-427f-aa17-267ca6975798/.default"];
 
     var tenantID = vscode.workspace.getConfiguration("adoCodespacesAuth").get('tenantID');
-    if (tenantID && tenantID != '') {
-      scopes.push(`VSCODE_TENANT:${tenantID}`)
+    if (tenantID && tenantID !== '') {
+      scopes.push(`VSCODE_TENANT:${tenantID}`);
     }
 
     await getAccessToken(scopes);
