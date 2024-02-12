@@ -6,6 +6,7 @@ import * as os from "os";
 import { v4 as uuidV4 } from "uuid";
 import { IPC } from "node-ipc";
 
+const DEFAULT_ADO_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default";
 const outputChannel = vscode.window.createOutputChannel("ADO Codespaces Auth");
 
 const authVsCodeCommand = "ado-codespaces-auth.authenticate";
@@ -110,9 +111,9 @@ const createHelperExecutable = (
 
 const authenticateAdo = async (context: vscode.ExtensionContext) => {
   try {
-    var scopes = ["499b84ac-1321-427f-aa17-267ca6975798/.default"];
+    const scopes = [DEFAULT_ADO_SCOPE];
 
-    var tenantID = vscode.workspace.getConfiguration("adoCodespacesAuth").get('tenantID');
+    const tenantID = vscode.workspace.getConfiguration("adoCodespacesAuth").get('tenantID');
     if (tenantID && tenantID !== '') {
       scopes.push(`VSCODE_TENANT:${tenantID}`);
     }
