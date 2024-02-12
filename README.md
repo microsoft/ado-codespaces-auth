@@ -1,12 +1,16 @@
 # Azure Devops Codespaces Authentication
 
 - This VSCode extension is used for authenticating to Azure Devops in GitHub Codespaces.
-- It authenticates using in-built microsoft auth provider to authenticate to ADO using AAD login.
+- It authenticates using in-built microsoft auth provider to authenticate to ADO using Entra ID login.
 - User is prompted for login on opening a codespace with this extension installed.
+- The default is to sign in to the common Entra ID tenant. The setting `adoCodespacesAuth.tenantID` allows to specify tenant to sign in to.
 - The OAuth access token is then shared with the codespace using a credential helper which is installed at `~/ado-auth-helper`. The credential helper supports two commands
   - `get` - This command is used by git credential helper to get auth credentials for git. You can configure the helper by running `git config --global credential.helper '<absolutePathToHelper>'`.
   - `get-access-token` - This command will print an access token to stdout. Other tools can integrate this for getting ADO credentials, for eg, authenticating to ADO Artifact Feeds (NPM, Nuget). 
 - This extension is not recommended to be installed by itself. You should instead use the [external-repository](https://github.com/microsoft/codespace-features/tree/main/src/external-repository) and [artifacts-helper](https://github.com/microsoft/codespace-features/tree/main/src/artifacts-helper) devcontainer features which will ensure this extension is preinstalled on your Codespace with proper configuration.
+
+### New in versione 1.2
+- Add the `adoCodespacesAuth.tenantID` setting 
 
 ### New in version 1.1
 - Credential helper for managed identities, installed at `~/azure-auth-helper`.
