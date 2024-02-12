@@ -30,7 +30,7 @@ const startServer = (): Promise<void> => {
         ipc.server.emit(
           socket,
           "accessToken",
-          await getAccessToken(scopes?.split(" "))
+          await getAccessToken(scopes?.split(" ") ?? [DEFAULT_ADO_SCOPE])
         );
       });
     });
