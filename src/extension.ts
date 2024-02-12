@@ -30,7 +30,7 @@ const startServer = (): Promise<void> => {
         ipc.server.emit(
           socket,
           "accessToken",
-          await getAccessToken(scopes?.split(" ") ?? [DEFAULT_ADO_SCOPE])
+          await getAccessToken(scopes?.split(" "))
         );
       });
     });
@@ -53,8 +53,13 @@ const statusBarItem = vscode.window.createStatusBarItem(
 );
 
 const getAccessToken = async (
-  scopes: readonly string[]
+  scopes = [DEFAULT_ADO_SCOPE]
 ) => {
+  const tenantID = vscode.workspace.getConfiguration("adoCodespacesAuth").get('tenantID');
+  if (tenantID && tenantID !== '') {
+    scopes.push(`VSCODE_TENANT:${tenantID}`);
+  }
+
   let session = await vscode.authentication.getSession("microsoft", scopes, {
     silent: true,
   });
@@ -111,14 +116,7 @@ const createHelperExecutable = (
 
 const authenticateAdo = async (context: vscode.ExtensionContext) => {
   try {
-    const scopes = [DEFAULT_ADO_SCOPE];
-
-    const tenantID = vscode.workspace.getConfiguration("adoCodespacesAuth").get('tenantID');
-    if (tenantID && tenantID !== '') {
-      scopes.push(`VSCODE_TENANT:${tenantID}`);
-    }
-
-    await getAccessToken(scopes);
+    await getAccessToken();
 
     createHelperExecutable(context, "ado-auth-helper");
     createHelperExecutable(context, "azure-auth-helper");
