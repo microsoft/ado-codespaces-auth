@@ -9,7 +9,7 @@
   - `get-access-token` - This command will print an access token to stdout. Other tools can integrate this for getting ADO credentials, for eg, authenticating to ADO Artifact Feeds (NPM, Nuget). 
 - This extension is not recommended to be installed by itself. You should instead use the [external-repository](https://github.com/microsoft/codespace-features/tree/main/src/external-repository) and [artifacts-helper](https://github.com/microsoft/codespace-features/tree/main/src/artifacts-helper) devcontainer features which will ensure this extension is preinstalled on your Codespace with proper configuration.
 
-### New in versione 1.2
+### New in version 1.2
 - Add the `adoCodespacesAuth.tenantID` setting 
 
 ### New in version 1.1
